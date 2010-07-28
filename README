@@ -1,0 +1,16 @@
+
+==================================================
+THE FORMALISATION OF THE REFOCUSING TRANSFORMATION
+by Filip Sieczkowski, University of Wrocław
+July 2010
+==================================================
+
+The source can be compiled using 'make'. It is known to compile correctly using
+Coq 8.2pl1.
+
+Each part of the formalisation depends on the utils/Util module.
+The dependencies inside each part of the formalisation are as follows:
+1. refocusing_lang
+2. refocusing_signatures
+3. refocusing_substitutions (or refocusing_environments)
+4. case studies
