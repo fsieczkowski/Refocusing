@@ -455,6 +455,20 @@ Module PreAbstractMachine (R : RED_LANG) (RS : RED_REF_SEM (R)) <: PRE_ABSTRACT_
   Qed.
   Hint Resolve dec_id_r.
 
+  Lemma decctx_id_l : forall E v d, RS.decctx E v d -> decctx E v d.
+  Proof with eauto.
+    induction 1 using RS.decctx_Ind with 
+    (P := fun c E d (H : RS.RS.dec c E d) => dec c E d)
+    (P0:= fun E v d (H0 : RS.decctx E v d) => decctx E v d)...
+  Qed.
+
+  Lemma decctx_id_r : forall E v d, decctx E v d -> RS.decctx E v d.
+  Proof with eauto.
+    induction 1 using decctx_Ind with 
+    (P := fun c E d (H : dec c E d) => RS.RS.dec c E d)
+    (P0:= fun E v d (H0 : decctx E v d) => RS.decctx E v d)...
+  Qed.
+
   Lemma iterRedPam : forall d v, RS.RS.iter d v -> iter d v.
   Proof with eauto.
     induction 1; auto; econstructor 2; inversion_clear D_EM; eauto;
@@ -483,10 +497,19 @@ Module PreAbstractMachine (R : RED_LANG) (RS : RED_REF_SEM (R)) <: PRE_ABSTRACT_
   Proof with auto.
     split...
   Qed.
+  
+  Lemma dec_val : forall v E d, 
+    dec (value_to_closure v) E d <-> decctx E v d.
+  Proof.
+    split; intros.
+    apply decctx_id_l; rewrite <- dec_val_self; apply dec_id_r; auto.
+    apply dec_id_l; rewrite dec_val_self; apply decctx_id_r; auto.
+  Qed.
 
 End PreAbstractMachine.
 
-Module StagedAbstractMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: STAGED_ABSTRACT_MACHINE R.
+Module StagedAbstractMachine (R : RED_LANG) (RS : RED_REF_SEM R) <:
+  STAGED_ABSTRACT_MACHINE R.
 
   Module PAM := PreAbstractMachine R RS.
   Module LP := Lang_Prop R.
@@ -553,6 +576,14 @@ Module StagedAbstractMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: STAGED_ABSTR
   Qed.
   Hint Resolve decPamSam.
 
+  Lemma decctxPamSam : forall E v d v0
+    (DEC : PAM.decctx E v d)
+    (ITR : iter d v0),
+    decctx E v v0.
+  Proof with eauto.
+    induction 1; intros...
+  Qed.
+
   Lemma iterPamSam : forall d v (ITER : PAM.iter d v), iter d v.
   Proof with eauto.
     induction 1...
@@ -583,6 +614,20 @@ Module StagedAbstractMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: STAGED_ABSTR
   Qed.
   Hint Resolve decSamPam.
 
+  Lemma decctxSamPam : forall E v v0 d 
+    (DEC : decctx E v v0)
+    (PDEC : PAM.decctx E v d),
+    PAM.iter d v0.
+  Proof with eauto.
+    induction 1; intros; inversion_clear PDEC; unfold dec_context in *; 
+      unfold PAM.dec_context in *;
+        try (rewrite DCT0 in DCT; inversion DCT; subst)...
+    inversion_clear ITER...
+    inversion_clear ITER; destruct (P.dec_total (plug c E)) as [dd H0]; 
+      inversion_clear H0; apply RS.RS.dec_plug in DEC; 
+        rewrite <- LP.compose_empty in DEC...
+  Qed.
+
   Lemma evalSamPam : forall (t : term) (v : value), eval t v -> PAM.eval t v.
   Proof with eauto.
     intros t v H; inversion_clear H; destruct (P.dec_total (pair t nil)) as [d H]; inversion_clear H...
@@ -592,6 +637,18 @@ Module StagedAbstractMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: STAGED_ABSTR
   Theorem evalSam : forall (t : term) (v : value), RS.RS.eval t v <-> eval t v.
   Proof with auto.
     intros t v; rewrite PAM.evalPam; split; intros...
+  Qed.
+
+  Lemma dec_val : forall E v v0, 
+    dec (value_to_closure v) E v0 <-> decctx E v v0.
+  Proof.
+    intros; destruct (P.dec_total (plug (value_to_closure v) E)) as [d H0];
+      inversion_clear H0; apply RS.RS.dec_plug in DEC; 
+        rewrite <- LP.compose_empty in DEC.
+    split; intro.
+    apply decctxPamSam with d; eauto; rewrite <- PAM.dec_val; eauto.
+    apply decPamSam with d; eauto; apply PAM.dec_id_l in DEC;
+      rewrite PAM.dec_val in DEC; eauto using decctxSamPam.
   Qed.
 
 End StagedAbstractMachine.
@@ -660,6 +717,13 @@ Module EvalApplyMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: EVAL_APPLY_MACHIN
     simpl; intros; try inversion ITER; subst; eauto; congruence.
   Qed.
 
+  Lemma decctxSamEam : forall E v v0
+    (DEC : SAM.decctx E v v0),
+    decctx E v v0.
+  Proof with eauto using decSamEam.
+    induction 1; try inversion_clear ITER...
+  Qed.
+
   Lemma evalSamEam : forall (t : term) (v : value), SAM.eval t v -> eval t v.
   Proof.
     intros t v H; inversion_clear H; constructor; apply decSamEam; auto.
@@ -673,6 +737,13 @@ Module EvalApplyMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: EVAL_APPLY_MACHIN
     (P0:= fun v c v' (H:decctx v c v') => SAM.decctx v c v'); intros; simpl...
   Qed.
 
+  Lemma decctxEamSam : forall E v v0
+    (DEC : decctx E v v0),
+    SAM.decctx E v v0.
+  Proof.
+    induction 1; try inversion_clear ITER; eauto using decEamSam.
+  Qed.
+
   Lemma evalEamSam : forall (t : term) (v : value), eval t v -> SAM.eval t v.
   Proof.
     intros t v H; inversion_clear H; constructor; apply decEamSam; auto.
@@ -684,9 +755,18 @@ Module EvalApplyMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: EVAL_APPLY_MACHIN
     intros t v; rewrite SAM.evalSam; split...
   Qed.
 
+  Lemma dec_val : forall E v v0, 
+    dec (value_to_closure v) E v0 <-> decctx E v v0.
+  Proof.
+    split; intro.
+    apply decctxSamEam; rewrite <- SAM.dec_val; apply decEamSam; auto.
+    apply decSamEam; rewrite SAM.dec_val; apply decctxEamSam; auto.
+  Qed.
+
 End EvalApplyMachine.
 
-Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: EVAL_APPLY_MACHINE_C Lang.
+Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <:
+  EVAL_APPLY_MACHINE_C Lang.
 
   Module EAM := EvalApplyMachine Lang RS.
   Import Lang.
@@ -801,6 +881,32 @@ Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: EVAL_APPLY_MACHIN
     destruct (context_clo _ _ _ _ DCT) as [[cC0 fC0] [UF0 UF1]] in UNFOLD at 2; simpl in UNFOLD. 
     subst; assert (H_UF := H0 cC0 None); simpl in *...
   Qed.
+  
+  Lemma decctxEamEamc : forall EC vC vC0,
+    EAM.decctx (contextC_to_context EC) (valueC_to_value vC) (valueC_to_value vC0) ->
+    decctx EC vC vC0.
+  Proof with eauto using decEamEamc.
+     intros; remember (contextC_to_context EC) as E;
+      remember (valueC_to_value vC) as v; remember(valueC_to_value vC0) as v0;
+        generalize dependent vC; generalize dependent vC0; generalize dependent EC;
+        induction H; intros; destruct EC; inversion HeqE; subst; clear HeqE.
+    apply valueC_to_value_injective in Heqv; subst...
+    (* Red *)
+    remember (context_red _ _ _ _ DCT CONTR) as ctr; 
+      destruct ctr as [[cC0 ofC] DCL]; apply dc_red with _ _ _ _ DCT CONTR;
+        try rewrite <- Heqctr; simpl; clear Heqctr; subst...
+    destruct ofC; simpl in *; subst...
+    inversion_clear DEC_C; cbv delta in DCL0; rewrite DCL0 in DCL; inversion DCL;
+      subst...
+    (* Val *)
+    remember (context_val _ _ _ DCT) as ctv; destruct ctv as [vC1 EQV];
+      apply dc_rec with _ _ DCT...
+    rewrite <- Heqctv; simpl...
+    (* Clo *)
+    remember (context_clo _ _ _ _ DCT) as ctc; 
+      destruct ctc as [[cC1 fC1] [EQC EQF]]; apply dc_clo with _ _ _ _ DCT; auto;
+        try rewrite <- Heqctc; simpl; clear Heqctc; subst...
+  Qed.
 
   Lemma evalEamEamc : forall t v, EAM.eval t (valueC_to_value v) -> eval t v.
   Proof.
@@ -830,6 +936,28 @@ Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: EVAL_APPLY_MACHIN
     econstructor 4...
   Qed.
 
+ Lemma decctxEamcEam : forall EC vC vC0
+    (DEC : decctx EC vC vC0),
+    EAM.decctx (contextC_to_context EC) (valueC_to_value vC)
+      (valueC_to_value vC0).
+  Proof with eauto using decEamcEam.
+    induction 1...
+    remember (context_red _ _ _ _ DCT CONTR) as CT_R; 
+      destruct CT_R as [[cC0 ofC] DCL]; inversion TO_C;
+        clear HeqCT_R TO_C; subst; econstructor...
+    destruct ofc; simpl in *; subst...
+    econstructor 3...
+    change (EAM.dec (closureC_to_closure cC) 
+      (contextC_to_context (f0 :: E)) (valueC_to_value v0))...
+    remember (context_val _ _ _ DCT) as CT_V; destruct CT_V as [vC2 UF];
+      clear HeqCT_V; simpl in *; subst...
+    remember (context_clo _ _ c _ DCT) as CT_C;
+      destruct CT_C as [[cC0 fC1] [UF0 UF1]]; inversion TO_C;
+        clear TO_C HeqCT_C; subst; econstructor 4...
+    change (EAM.dec (closureC_to_closure cC) (contextC_to_context (f0 :: E))
+      (valueC_to_value v0))...
+  Qed.
+
   Lemma evalEamcEam : forall t v, eval t v -> EAM.eval t (valueC_to_value v).
   Proof.
     intros t v H; inversion_clear H; constructor; cutrewrite (pair t nil = closureC_to_closure (pairC t nil));
@@ -842,10 +970,20 @@ Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: EVAL_APPLY_MACHIN
     intros; rewrite EAM.evalEam; split; eauto using evalEamEamc, evalEamcEam.
   Qed.
 
+  Lemma dec_val : forall E v v0, 
+    dec (valueC_to_closureC v) E v0 <-> decctx E v v0.
+  Proof.
+    split; intro.
+    apply decctxEamEamc; rewrite <- EAM.dec_val;
+      rewrite valueC_to_closure_commutes; apply decEamcEam; auto.
+    apply decEamEamc; rewrite <- valueC_to_closure_commutes; 
+      rewrite EAM.dec_val; apply decctxEamcEam; auto.
+  Qed.
 
 End EAMachineC.
 
-Module UnfoldedEAMachine (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: UNFOLDED_EVAL_APPLY_MACHINE Lang.
+Module UnfoldedEAMachine (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <:
+  UNFOLDED_EVAL_APPLY_MACHINE Lang.
 
   Module EAMC := EAMachineC Lang RS.
   Import Lang.
@@ -864,61 +1002,7 @@ Module UnfoldedEAMachine (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: UNFOLDED_E
   Definition context_red := context_red.
   Definition context_val := context_val.
   Definition context_clo := context_clo.
-  
-(*  Inductive dec : term -> envC -> contextC -> valueC -> Prop :=
-  | d_r   : forall t t0 sC sC0 EC front v r c
-            (DCL    : dec_closure (closureC_to_closure (pairC t sC)) = in_red r)
-            (CONTR  : contract r = Some c)
-            (UNFOLD : proj1_sig (closure_red _ _ _ DCL CONTR) = (t0, sC0, front))
-            (DEC_C  : dec t0 sC0 (opt_to_list front ++ EC) v),
-            dec t sC EC v
-  | d_r_z : forall t t0 sC sC0 EC r c v H
-            (DCL    : dec_closure (closureC_to_closure (pairC t sC)) = in_red r)
-            (CONTR  : contract r = Some c)
-            (UNFOLD : closure_red _ _ _ DCL CONTR = inl _ (exist _ (t0, sC0) H))
-            (DEC_C  : dec t0 sC0 EC v),
-            dec t sC EC v
-  | d_r_o : forall t t0 sC sC0 fC EC r c v H
-            (DCL    : dec_closure (closureC_to_closure (pairC t sC)) = in_red r)
-            (CONTR  : contract r = Some c)
-            (UNFOLD : closure_red _ _ _ DCL CONTR = inr _ (exist _ (t0, sC0, fC) H))
-            (DEC_C  : dec t0 sC0 (fC :: EC) v),
-            dec t sC EC v
-  | d_v   : forall t sC EC v vC v0
-            (DCL    : dec_closure (closureC_to_closure (pairC t sC)) = in_val v)
-            (UNFOLD : proj1_sig (closure_val _ _ DCL) = vC)
-            (DEC_E  : decctx EC vC v0),
-            dec t sC EC v0
-  with decctx : contextC -> valueC -> valueC -> Prop :=
-  | dc_val : forall vC, decctx emptyC vC vC
-  | dc_r   : forall fC EC vC vC0 t sC front r c
-             (DCT    : dec_context (frameC_to_frame fC) (valueC_to_value vC) = in_red r)
-             (CONTR  : contract r = Some c)
-             (UNFOLD : proj1_sig (context_red _ _ _ _ DCT CONTR) = (t, sC, front))
-             (DEC_C  : dec t sC (opt_to_list front ++ EC) vC0),
-             decctx (fC :: EC) vC vC0
-(*  | dc_r_z : forall fC EC vC v0 t sC r c H
-             (DCT    : dec_context (frameC_to_frame fC) (valueC_to_value vC) = in_red r)
-             (CONTR  : contract r = Some c)
-             (UNFOLD : context_red _ _ _ _ DCT CONTR = inl _ (exist _ (t, sC) H))
-             (DEC_C  : dec t sC EC v0),
-             decctx (fC :: EC) vC v0
-  | dc_r_o : forall fC fC0 EC vC v0 t sC r c H
-             (DCT    : dec_context (frameC_to_frame fC) (valueC_to_value vC) = in_red r)
-             (CONTR  : contract r = Some c)
-             (UNFOLD : context_red _ _ _ _ DCT CONTR = inr _ (exist _ (t, sC, fC0) H))
-             (DEC_C  : dec t sC (fC0 :: EC) v0),
-             decctx (fC :: EC) vC v0*)
-  | dc_v   : forall fC EC vC vC0 vC1 v
-             (DCT    : dec_context (frameC_to_frame fC) (valueC_to_value vC) = in_val v)
-             (UNFOLD : proj1_sig (context_val _ _ _ DCT) = vC0)
-             (DEC_E  : decctx EC vC0 vC1),
-             decctx (fC :: EC) vC vC1
-  | dc_clo : forall fC fC0 EC vC vC0 t sC c f
-             (DCT    : dec_context (frameC_to_frame fC) (valueC_to_value vC) = in_clo c f)
-             (UNFOLD : proj1_sig (context_clo _ _ _ _ DCT) = (t, sC, fC0))
-             (DEC_C  : dec t sC (fC0 :: EC) vC0),
-             decctx (fC :: EC) vC vC0.*)
+
   Inductive dec : term -> envC -> contextC -> valueC -> Prop :=
   | d_r_t : forall t t0 sC sC0 EC front v r c cC
             (DCL    : dec_closure (closureC_to_closure (pairC t sC)) = in_red r)
@@ -1024,57 +1108,6 @@ Module UnfoldedEAMachine (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: UNFOLDED_E
     rewrite <- Heqqq; simpl; reflexivity.
   Qed.
 
-(*    intros.
-    cutrewrite (EC = opt_to_list None ++ EC); auto.
-    refine (EAM.dec_Ind
-      (fun c E v (DEC_EAM : EAM.dec c E v) => forall t sC ofC EC vC
-        (OK : dcl c t sC ofC)
-        (E_EQ : E = contextC_to_context EC)
-        (V_EQ : v = valueC_to_value vC),
-        dec t sC (opt_to_list ofC ++ EC) vC)
-      (fun E v v0 (DCTX_EAM : EAM.decctx E v v0) => forall EC vC vC0
-        (E_EQ : E = contextC_to_context EC)
-        (V_EQ : v = valueC_to_value vC)
-        (V_EQ0: v0 = valueC_to_value vC0),
-        decctx EC vC vC0) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros; simpl in *; subst...
-    (* Case 1 *)
-    destruct ofC; cbv in OK; cbv delta in DCL.
-    rewrite DCL in OK; discriminate.
-    simpl; subst c.
-    assert (UNFOLD : proj1_sig (closure_red _ _ _ DCL CONTR) = proj1_sig (closure_red _ _ _ DCL CONTR)); auto.
-    destruct (closure_red _ _ _ DCL CONTR) as [[[t1 sC1] ofC1] UF] in UNFOLD at 2; simpl in *...
-    (* Case 2 *)
-    destruct ofC; cbv in OK; cbv delta in DCL.
-    rewrite DCL in OK; discriminate.
-    simpl; subst c.
-    assert (UNFOLD : proj1_sig (closure_val _ _ DCL) = proj1_sig (closure_val _ _ DCL)); auto.
-    destruct (closure_val _ _ DCL) as [vC1 UF] in UNFOLD at 2; simpl in *...
-    (* Case 3 *)
-    destruct ofC; cbv in OK; cbv delta in DCL; simpl.
-    rewrite DCL in OK; inversion OK; subst; clear OK; simpl.
-    cutrewrite (f0 :: EC0 = opt_to_list None ++ f0 :: EC0); auto.
-    apply H; simpl...
-    subst.
-    assert (hh := closureC_only_empty (pairC t0 sC0) c0 (f :: empty)); unfold only_empty in hh.
-    assert (ht := dec_closure_correct (closureC_to_closure (pairC t0 sC0))); rewrite DCL in ht; simpl in *; apply hh in ht; discriminate.
-    (* Case 4 *)
-    apply valueC_to_value_injective in V_EQ0; cutrewrite (empty = contextC_to_context emptyC) in E_EQ; auto;
-    apply contextC_to_context_injective in E_EQ; subst...
-    (* Case 5 *)
-    destruct EC0; inversion E_EQ; subst; clear E_EQ;
-    assert (UNFOLD : proj1_sig (context_red _ _ _ _ DCT CONTR) = proj1_sig (context_red _ _ _ _ DCT CONTR)); auto.
-    destruct (context_red _ _ _ _ DCT CONTR) as [[[t0 sC0] fC0] UF] in UNFOLD at 2; simpl in UNFOLD...
-    (* Case 6 *)
-    destruct EC0; inversion E_EQ; subst; clear E_EQ; 
-    assert (UNFOLD : proj1_sig (context_val _ _ _ DCT) = proj1_sig (context_val _ _ _ DCT)); auto.
-    destruct (context_val _ _ _ DCT) as [vC2 UF] in UNFOLD at 2; simpl in UNFOLD...
-    (* Case 7 *)
-    destruct EC0; inversion E_EQ; subst; clear E_EQ;
-    assert (UNFOLD : proj1_sig (context_clo _ _ _ _ DCT) = proj1_sig (context_clo _ _ _ _ DCT)); auto.
-    destruct (context_clo _ _ _ _ DCT) as [[[t0 sC0] fC0] [UF0 UF1]] in UNFOLD at 2; simpl in UNFOLD. 
-    subst; assert (H_UF := H t0 sC0 None); simpl in *...
-  Qed. *)
-
   Lemma evalEamUeam : forall t v, EAMC.eval t v -> eval t v.
   Proof.
     intros t v H; inversion_clear H; auto using decEamUeam.
@@ -1086,47 +1119,33 @@ Module UnfoldedEAMachine (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <: UNFOLDED_E
     (P := fun t sC EC vC (DEC_U : dec t sC EC vC) => EAMC.dec (pairC t sC) EC vC)
     (P0:= fun EC vC vC0 (DECC_U : decctx EC vC vC0) => EAMC.decctx EC vC vC0)...
     (* Case 1 *)
-    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH]; simpl in *; inversion UNFOLD;
-    econstructor... rewrite HH; subst tt ss...
+    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH];
+      simpl in *; inversion UNFOLD; econstructor... 
+    rewrite HH; subst tt ss...
     (* Case 2 *)
-    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH]; simpl in *; inversion UNFOLD;
-    econstructor... rewrite HH; subst vv...
-    admit.
+    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH];
+      simpl in *; inversion UNFOLD; econstructor...
+    rewrite HH; subst vv...
+    rewrite EAMC.dec_val...
     (* Case 3 *)
-    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH]; simpl in *; inversion UNFOLD;
-    econstructor... rewrite HH; subst tt ss...
+    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH];
+      simpl in *; inversion UNFOLD; econstructor...
+    rewrite HH; subst tt ss...
     (* Case 4 *)
-    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH]; simpl in *; inversion UNFOLD;
-    econstructor... rewrite HH; subst vv...
-    admit.
+    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH];
+      simpl in *; inversion UNFOLD; econstructor...
+    rewrite HH; subst vv...
+    rewrite EAMC.dec_val...
     (* Case 5 *)
-    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH]; simpl in *; inversion UNFOLD;
-    econstructor 4... rewrite HH; subst tt ss...
+    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH];
+      simpl in *; inversion UNFOLD; econstructor 4...
+    rewrite HH; subst tt ss...
     (* Case 6 *)
-    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH]; simpl in *; inversion UNFOLD;
-    econstructor 4... rewrite HH; subst vv...
-    admit.
+    remember (closureC_dec cC) as qq; destruct qq as [[[tt ss] | vv] HH];
+      simpl in *; inversion UNFOLD; econstructor 4...
+    rewrite HH; subst vv...
+    rewrite EAMC.dec_val...
    Qed.
-
-(*    induction 1 using dec_Ind with
-    (P := fun t sC EC vC (DEC_U : dec t sC EC vC) => EAM.dec (closureC_to_closure (pairC t sC)) (contextC_to_context EC) (valueC_to_value vC))
-    (P0:= fun EC vC vC0 (DECC_U : decctx EC vC vC0) => EAM.decctx (contextC_to_context EC) (valueC_to_value vC) (valueC_to_value vC0))...
-    (* Case 1 *)
-    remember (closure_red (pairC t sC) r c DCL CONTR) as CL_R; destruct CL_R as [[[t1 sC1] ofC] UF]; simpl in *; inversion UNFOLD; subst; 
-    clear UNFOLD HeqCL_R; econstructor...
-    destruct front; simpl in *; try rewrite <- RS_RFL_CL in UF; subst...
-    (* Case 2 *)
-    remember (closure_val (pairC t sC) v DCL) as CL_V; destruct CL_V as [vC0 UF]; clear HeqCL_V; simpl in *; subst...
-    (* Case 3 *)
-    remember (context_red fC vC r c DCT CONTR) as CT_R; destruct CT_R as [[[t0 sC0] ofC] UF]; inversion UNFOLD; clear HeqCT_R UNFOLD; 
-    subst; econstructor...
-    destruct front; simpl in *; try rewrite <- RS_RFL_CL in UF; subst...
-    (* Case 4 *)
-    remember (context_val _ _ _ DCT) as CT_V; destruct CT_V as [vC2 UF]; clear HeqCT_V; simpl in *; subst...
-    (* Case 5 *)
-    remember (context_clo fC vC c f DCT) as CT_C; destruct CT_C as [[[t0 sC0] fC1] [UF0 UF1]]; inversion UNFOLD; clear UNFOLD HeqCT_C; subst;
-    econstructor 4...
-  Qed. *)
 
   Lemma evalUeamEam : forall t v, eval t v -> EAMC.eval t v.
   Proof.
