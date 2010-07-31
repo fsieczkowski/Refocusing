@@ -10,3 +10,5 @@ case_studies: main
 	coqc -I ../utils call_by_value_sub
 	coqc -I ../utils call_by_name_sub
 	coqc -I ../utils miniml
+clean:
+	rm *~ *.vo *.glob; echo "Directory cleaned"

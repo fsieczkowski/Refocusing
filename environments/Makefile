@@ -8,3 +8,5 @@ main: sig
 case_studies: main
 	coqc -I ../utils call_by_name_environments
 	coqc -I ../utils call_by_value_environments
+clean:
+	rm *~ *.vo *.glob; echo "Directory cleaned"
