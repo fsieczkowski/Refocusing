@@ -177,8 +177,8 @@ Definition d_val := CallByName.d_val.
 Definition d_red := CallByName.d_red.
 
 Inductive dec' : CallByName.term -> CallByName.context -> CallByName.decomp -> Prop :=
-| val_ctx : forall (v : CallByName.value) (c : CallByName.context) (d : CallByName.decomp),
-  decctx c v d -> dec' v c d
+| val_ctx : forall (v : value) (c : context) (d : decomp),
+  decctx c v d -> dec' (v:term) c d
 | app_ctx : forall (t s : CallByName.term) (c : CallByName.context) (d : CallByName.decomp),
   dec' t (ap_r s :: c) d -> dec' (appl t s) c d
 with decctx : CallByName.context -> CallByName.value -> CallByName.decomp -> Prop :=
@@ -201,7 +201,7 @@ Lemma dec_correct : forall t c d, dec t c d -> decomp_to_term d = plug t c.
 Proof.
 induction 1 using dec_Ind with
 (P := fun t c d (H:dec t c d) => decomp_to_term d = plug t c)
-(P0 := fun c v d (H:decctx c v d) => decomp_to_term d = plug v c); intros; simpl; auto.
+(P0 := fun c v d (H:decctx c v d) => decomp_to_term d = plug (value_to_term v) c); intros; simpl; auto.
 Qed.
 
 Lemma dec_plug :

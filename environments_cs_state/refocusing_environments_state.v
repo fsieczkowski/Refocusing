@@ -1007,11 +1007,10 @@ Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <:
     (* DCL -> RED *)
     remember (closure_red _ _ _ _ _ _ _ DCL CTR) as clr;
       destruct clr as [[[cC1 EC1] GC1] [EQC [EQE EQG]]];
-        apply dec_r with _ _ _ _ _ _ _ DCL CTR; auto; 
-          try rewrite <- Heqclr; simpl...
+        eapply dec_r with _ _ _ _ _ _ _ DCL CTR; eauto; rewrite <- Heqclr; simpl...
     (* DCL -> VAL *)
     remember (closure_val _ _ DCL) as clv; destruct clv as [vC1 EQV];
-      apply dec_v with _ _ DCL; try (rewrite <- Heqclv; simpl)...
+      eapply dec_v with _ _ DCL; try (rewrite <- Heqclv; simpl)...
     (* DCL -> CLO *)
     assert (hh := closureC_only_empty (cC0) c0 (f :: empty)); 
       unfold only_empty in hh.
@@ -1026,17 +1025,16 @@ Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <:
     destruct EC0; inversion EQE; subst; clear EQE.
     remember (context_red _ _ _ _ _ _ _ _ DCT CTR) as ctr;
       destruct ctr as [[[cC1 EC1] GC1] [EQC [EQE EQG]]];
-        apply dc_r with _ _ _ _ _ _ _ DCT CTR; auto;
-          try rewrite <- Heqctr; simpl...
+        eapply dc_r with _ _ _ _ _ _ _ DCT CTR; eauto; rewrite <- Heqctr; simpl...
     (* DCT -> VAL *)
     destruct EC0; inversion EQE; subst; clear EQE.
     remember (context_val _ _ _ DCT) as ctv; destruct ctv as [vC2 EQV];
-      apply dc_v with _ _ DCT; auto. 
+      eapply dc_v with _ _ DCT; eauto.
     rewrite <- Heqctv; simpl...
     (* DCT -> CLO *)
     destruct EC0; inversion EQE; subst; clear EQE.
     remember (context_clo _ _ _ _ DCT) as ctc; 
-      destruct ctc as [[cC1 fC1] [EQC EQF]]; apply dc_c with _ _ _ _ DCT; auto;
+      destruct ctc as [[cC1 fC1] [EQC EQF]]; eapply dc_c with _ _ _ _ DCT; eauto;
         try rewrite <- Heqctc; simpl...
     apply H; auto; simpl; f_equal...
   Qed.
@@ -1057,13 +1055,13 @@ Module EAMachineC (Lang : RED_LANG) (RS : RED_REF_SEM Lang) <:
         apply stateC_to_state_injective in EQG; subst...
     remember (context_red _ _ _ _ _ _ _ _ DCT CTR) as ctr; 
       destruct ctr as [[[cC0 EC0] GC0] [EQC [EQE EQG]]];
-        apply dc_r with _ _ _ _ _ _ _ DCT CTR; try rewrite <- Heqctr;
+        eapply dc_r with _ _ _ _ _ _ _ DCT CTR; try rewrite <- Heqctr;
           simpl; clear Heqctr; subst...
     remember (context_val _ _ _ DCT) as ctv; destruct ctv as [vC1 EQV];
-      apply dc_v with _ _ DCT...
+      eapply dc_v with _ _ DCT...
     rewrite <- Heqctv; simpl...
     remember (context_clo _ _ _ _ DCT) as ctc; 
-      destruct ctc as [[cC1 fC1] [EQC EQF]]; apply dc_c with _ _ _ _ DCT; auto;
+      destruct ctc as [[cC1 fC1] [EQC EQF]]; eapply dc_c with _ _ _ _ DCT; auto;
         try rewrite <- Heqctc; simpl; clear Heqctc; subst...
   Qed.
 

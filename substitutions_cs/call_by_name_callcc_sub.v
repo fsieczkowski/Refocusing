@@ -195,7 +195,7 @@ match ec with
   | R.ap_r t => R.in_red (R.rApp v t)
 end.
 
-Lemma dec_term_value : forall (v:R.value), dec_term (v:R.term) = R.in_val v.
+Lemma dec_term_value : forall (v:R.value), dec_term (R.value_to_term v) = R.in_val v.
 Proof.
 destruct v; simpl; auto.
 Qed.

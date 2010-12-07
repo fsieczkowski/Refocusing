@@ -639,26 +639,26 @@ Module KrivineMachine <: ABSTRACT_MACHINE.
     assert (DCL : dec_closure (closureC_to_closure (pairC (lam t) s )) = in_val (valueC_to_value (v_lamC t s))) by auto; constructor 3 with _ DCL; auto.
     remember (closure_val (pairC (lam t) s) (valueC_to_value (v_lamC t s)) DCL) as UNF; clear HeqUNF;
     destruct UNF as [vC HUNF]; simpl; apply valueC_to_value_injective in HUNF...
-    assert (DCL : CBN_RS.dec_closure (closureC_to_closure (pairC (lam t) s )) = in_val (valueC_to_value (v_lamC t s))) by auto;
+    assert (DCL : dec_closure (closureC_to_closure (pairC (lam t) s )) = in_val (valueC_to_value (v_lamC t s))) by auto;
     replace EC with (opt_to_list None × EC); auto.
-    assert (DCT : CBN_RS.dec_context (frameC_to_frame (ap_rC cC)) (valueC_to_value (v_lamC t s)) = in_red (r_beta (valueC_to_value (v_lamC t s)) (cC : closure))) by auto.
+    assert (DCT : dec_context (frameC_to_frame (ap_rC cC)) (valueC_to_value (v_lamC t s)) = in_red (r_beta (valueC_to_value (v_lamC t s)) (cC : closure))) by auto.
     assert (CONTR : contract (r_beta (valueC_to_value (v_lamC t s)) (cC : closure)) = Some (pair t (envC_to_env (cC :: s)))) by  auto.
     constructor 4 with _ _ _ _ DCL DCT CONTR; auto.
-    remember (closure_val _ _ DCL) as UNF; clear HeqUNF; destruct UNF as [vC HUNF]; simpl; subst; apply valueC_to_value_injective in HUNF; eauto.
-    remember (context_red _ _ _ _ DCT CONTR) as UNF; clear HeqUNF; destruct UNF as [[[tt ss] oo] HH]; simpl; subst.
+    remember (closure_val (pairC (lam t) s) _ DCL) as UNF; clear HeqUNF; destruct UNF as [vC HUNF]; simpl; subst; apply valueC_to_value_injective in HUNF; eauto.
+    remember (context_red (ap_rC cC) _ _ _ DCT CONTR) as UNF; clear HeqUNF; destruct UNF as [[[tt ss] oo] HH]; simpl; subst.
     destruct oo; [destruct t | inversion HH]...
     replace ((cC : closure) :: envC_to_env s) with (envC_to_env (cC :: s)) in H2; auto; apply envC_to_env_injective in H2; subst...
-    assert (DCL : CBN_RS.dec_closure (closureC_to_closure (pairC (var n) s)) = in_red (r_get n (envC_to_env s))); auto.
+    assert (DCL : dec_closure (closureC_to_closure (pairC (var n) s)) = in_red (r_get n (envC_to_env s))); auto.
     assert (CONTR : contract (r_get n (envC_to_env s)) = Some (pair t0 (envC_to_env s0))); auto.
     replace E with (opt_to_list None × E); auto.
     constructor 2 with _ _ DCL CONTR.
-    remember (closure_red _ _ _ DCL CONTR) as UNF; clear HeqUNF; destruct UNF as [[[tt ss] [ ff |]] HUNF]; [destruct t0 | inversion HUNF]...
+    remember (closure_red (pairC (var n) s) _ _ DCL CONTR) as UNF; clear HeqUNF; destruct UNF as [[[tt ss] [ ff |]] HUNF]; [destruct t0 | inversion HUNF]...
     apply envC_to_env_injective in H4; subst...
     replace (ap_rC (pairC t1 s) :: E) with (opt_to_list (Some (ap_rC (pairC t1 s))) × E); auto.
     assert (DCL : CBN_RS.dec_closure (closureC_to_closure (pairC (app t0 t1) s)) = in_red (r_app t0 t1 (envC_to_env s))); auto.
     assert (CONTR : contract (r_app t0 t1 (envC_to_env s)) = Some (comp (pair t0 (envC_to_env s)) (pair t1 (envC_to_env s)))); auto.
     constructor 2 with _ _ DCL CONTR.
-    remember (closure_red _ _ _ DCL CONTR) as UNF; clear HeqUNF; destruct UNF as [[[tt ss] [ff |]] HUNF]; inversion HUNF;
+    remember (closure_red (pairC (app t0 t1) s) _ _ DCL CONTR) as UNF; clear HeqUNF; destruct UNF as [[[tt ss] [ff |]] HUNF]; inversion HUNF;
     apply envC_to_env_injective in H4; replace (ap_r (pair t1 (envC_to_env s))) with (frameC_to_frame (ap_rC (pairC t1 s))) in H5;
     auto; apply frameC_to_frame_injective in H5; subst...
   Qed.

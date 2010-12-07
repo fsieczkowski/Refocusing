@@ -801,15 +801,15 @@ Module Zinc <: ABSTRACT_MACHINE.
   Proof with isda.
     intros; inversion H; auto.
     (* val *)
-    assert (DCL : CBV_RS.dec_closure (closureC_to_closure (pairC (lam n t) sC))
+    assert (DCL : dec_closure (closureC_to_closure (pairC (lam n t) sC))
       = in_val (valueC_to_value (v_lamC n t sC))) by auto.
     eapply t_cval with (DCL := DCL);
-      destruct (closure_val _ _ DCL) as [vC HUNF]; simpl;
+      destruct (closure_val (pairC (lam n t) sC) _ DCL) as [vC HUNF]; simpl;
         apply valueC_to_value_injective in HUNF...
     (* beta *)
-    assert (DCL : CBV_RS.dec_closure (closureC_to_closure (pairC (lam n t) sC))
+    assert (DCL : dec_closure (closureC_to_closure (pairC (lam n t) sC))
       = in_val (valueC_to_value (v_lamC n t sC))) by auto.
-    assert (DCT : CBV_RS.dec_context (frameC_to_frame (ap_rC vC))
+    assert (DCT : dec_context (frameC_to_frame (ap_rC vC))
       (valueC_to_value (v_lamC n t sC)) = in_red (r_beta 
         (valueC_to_value (v_lamC n t sC)) (valueC_to_value vC))) by auto.
     assert (CTR : contract (r_beta (valueC_to_value (v_lamC n t sC))
@@ -817,41 +817,41 @@ Module Zinc <: ABSTRACT_MACHINE.
         = Some (closureC_to_closure (pairC t0 sC0), contextC_to_context EC0)).
     rewrite <- BETA; simpl; rewrite valueC_to_closure_commutes; auto.
     eapply t_cred with (DCL := DCL) (DCT := DCT) (CTR := CTR).
-    destruct (closure_val _ _ DCL) as [vC0 HUNF]; simpl;
+    destruct (closure_val (pairC (lam n t) sC) _ DCL) as [vC0 HUNF]; simpl;
       auto using valueC_to_value_injective.
-    destruct (context_red _ _ _ _ _ _ DCT CTR) as [[cC0 EC1] [EQC EQE]]; simpl;
+    destruct (context_red (ap_rC vC) _ _ _ _ _ DCT CTR) as [[cC0 EC1] [EQC EQE]]; simpl;
       f_equal; auto using closureC_to_closure_injective,
         contextC_to_context_injective.
     (* ap_l *)
-    assert (DCL : CBV_RS.dec_closure (closureC_to_closure (pairC (lam n t) sC))
+    assert (DCL : dec_closure (closureC_to_closure (pairC (lam n t) sC))
       = in_val (valueC_to_value (v_lamC n t sC))) by auto.
-    assert (DCT : CBV_RS.dec_context (frameC_to_frame (ap_lC (pairC t0 sC0)))
+    assert (DCT : dec_context (frameC_to_frame (ap_lC (pairC t0 sC0)))
       (valueC_to_value (v_lamC n t sC)) = in_clo (closureC_to_closure (pairC t0 sC0))
         (frameC_to_frame (ap_rC (v_lamC n t sC)))) by auto.
     eapply t_crec with (DCL := DCL) (DCT := DCT).    
-    destruct (closure_val _ _ DCL) as [vC0 HUNF]; simpl;
+    destruct (closure_val (pairC (lam n t) sC) _ DCL) as [vC0 HUNF]; simpl;
       auto using valueC_to_value_injective.
-    destruct (context_clo _ _ _ _ DCT) as [[ccC ffC] [EQC EQF]]; simpl; f_equal;
-      auto using closureC_to_closure_injective, frameC_to_frame_injective.
+    destruct (context_clo (ap_lC (pairC t0 sC0)) _ _ _ DCT) as [[ccC ffC] [EQC EQF]]; simpl;
+      f_equal; auto using closureC_to_closure_injective, frameC_to_frame_injective.
     (* var *)
-    assert (DCL : CBV_RS.dec_closure (closureC_to_closure (pairC (var n) sC))
+    assert (DCL : dec_closure (closureC_to_closure (pairC (var n) sC))
       = in_red (r_get n (envC_to_env sC))) by auto.
     assert (CTR : contract (r_get n (envC_to_env sC)) (contextC_to_context EC)
       = Some (closureC_to_closure (pairC t0 sC0), contextC_to_context EC))
     by (simpl; rewrite GET; auto).
     eapply t_red with (DCL := DCL) (CTR := CTR).
-    destruct (closure_red _ _ _ _ _ DCL CTR) as [[cC0 EC0] [EQC EQE]]; simpl;
+    destruct (closure_red (pairC (var n) sC) _ _ _ _ DCL CTR) as [[cC0 EC0] [EQC EQE]]; simpl;
       f_equal; auto using closureC_to_closure_injective,
         contextC_to_context_injective.
     (* app *)
-    assert (DCL : CBV_RS.dec_closure (closureC_to_closure (pairC (app t0 t1) sC))
+    assert (DCL : dec_closure (closureC_to_closure (pairC (app t0 t1) sC))
       = in_red (r_app t0 t1 (envC_to_env sC))) by auto.
     assert (CTR : contract (r_app t0 t1 (envC_to_env sC)) (contextC_to_context EC)
       = Some (closureC_to_closure (pairC t1 sC), 
         contextC_to_context (ap_lC (pairC t0 sC) :: EC))) by auto.
     eapply t_red with (DCL := DCL) (CTR := CTR);
-      destruct (closure_red _ _ _ _ _ DCL CTR) as [[cC0 EC0] [EQC EQE]]; simpl;
-        f_equal; auto using closureC_to_closure_injective,
+      destruct (closure_red (pairC (app t0 t1) sC) _ _ _ _ DCL CTR) as [[cC0 EC0] [EQC EQE]];
+        simpl; f_equal; auto using closureC_to_closure_injective,
           contextC_to_context_injective.
   Qed.
  
