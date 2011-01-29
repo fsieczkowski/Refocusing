@@ -831,6 +831,91 @@ Module ProperEAMachine (R : RED_LANG) (RS : RED_REF_SEM R) <: PROPER_EA_MACHINE 
 
   End AM.
 
+  Definition trfun (cfg : configuration) : option configuration :=
+    match cfg with
+      | c_init t           => Some (c_eval t R.empty)
+      | c_eval t E         =>
+        match dec_term t with
+          | R.in_red r  =>
+            match R.contract r with
+              | Some t' => Some (c_eval t' E)
+              | None    => None
+            end
+          | R.in_val v    => Some (c_apply E v)
+          | R.in_term t f => Some (c_eval t (f :: E))
+        end
+      | c_apply nil v       => Some (c_final v)
+      | c_apply (f :: E) v =>
+        match dec_context f v with
+          | R.in_red r =>
+            match R.contract r with
+              | Some t' => Some (c_eval t' E)
+              | None    => None
+            end
+          | R.in_val v    => Some (c_apply E v)
+          | R.in_term t f => Some (c_eval t (f :: E))
+        end
+      | c_final _          => None
+    end.
+
+  Lemma transition_fun : forall cfg cfg0
+    (HTran : transition cfg cfg0),
+    trfun cfg = Some cfg0.
+  Proof.
+    intros; inversion_clear HTran;
+    repeat (simpl;
+      match goal with
+        | [DT : dec_term ?t = ?ir       |- context [dec_term ?t]] => rewrite DT
+        | [DC : dec_context ?f ?v = ?ir |- context [dec_context ?f ?v]] => rewrite DC
+        | [CTR : R.contract ?r = ?ot |- context [R.contract ?r]] => rewrite CTR
+      end); reflexivity.
+  Qed.
+
+  Lemma fun_transition : forall cfg,
+    match trfun cfg with
+      | Some cfg' => transition cfg cfg'
+      | None => forall cfg', ~transition cfg cfg'
+    end.
+  Proof.
+    destruct cfg; simpl.
+    (* Init *)
+    apply t_init.
+    (* Eval *)
+    remember (dec_term t) as dt; destruct dt; simpl; symmetry in Heqdt.
+    (* red *)
+    remember (R.contract r) as ct; destruct ct; simpl; symmetry in Heqct.
+    (* ok *)
+    eapply t_red; eassumption.
+    (* fail *)
+    intros ? HTran; inversion_clear HTran;
+      rewrite Heqdt in DT; inversion DT; subst; rewrite Heqct in CONTR;
+        inversion CONTR.
+    (* val *)
+    eapply t_val; assumption.
+    (* term *)
+    eapply t_term; assumption.
+    (* Apply *)
+    destruct c; simpl.
+    (* empty *)
+    apply t_cfin.
+    (* frame *)
+    remember (dec_context e v) as dc; destruct dc; simpl; symmetry in Heqdc.
+    (* red *)
+    remember (R.contract r) as ct; destruct ct; simpl; symmetry in Heqct.
+    (* ok *)
+    eapply t_cred; eassumption.
+    (* fail *)
+    intros ? HTran; inversion_clear HTran;
+      rewrite Heqdc in DC; inversion DC; subst; rewrite Heqct in CONTR;
+        inversion CONTR.
+    (* val *)
+    apply t_cval; assumption.
+    (* term *)
+    apply t_cterm; assumption.
+    (* Final *)
+    intros ? HTran; inversion HTran.
+  Qed.
+
   Notation " a →+ b " := (AM.trans_close a b) (at level 40, no associativity).
 
   Lemma decEamTrans : forall (t:R.term) (c : R.context) (v:R.value), EAM.dec t c v -> (c_eval t c) →+ (c_final v).
@@ -1040,6 +1125,91 @@ Module ProperPEMachine (R : RED_LANG) (PRS : PE_REF_SEM R) <: PROPER_PE_MACHINE 
                (DT    : dec_term t = R.in_term t0 ec),
                c_eval t c → c_eval t0 (ec :: c)
   where " a →  b " := (transition a b).
+
+  Definition trfun (cfg : configuration) : option configuration :=
+    match cfg with
+      | c_init t           => Some (c_eval t R.empty)
+      | c_eval t E         =>
+        match dec_term t with
+          | R.in_red r  =>
+            match R.contract r with
+              | Some t' => Some (c_eval t' E)
+              | None    => None
+            end
+          | R.in_val v    =>
+            match E with
+              | nil      => Some (c_final v)
+              | (f :: E) =>
+                match dec_context f v with
+                  | R.in_red r =>
+                    match R.contract r with
+                      | Some t' => Some (c_eval t' E)
+                      | None    => None
+                    end
+                  | R.in_val v    => None
+                  | R.in_term t f => Some (c_eval t (f :: E))
+                end
+            end
+          | R.in_term t f => Some (c_eval t (f :: E))
+        end
+      | c_final _          => None
+    end.
+
+  Lemma transition_fun : forall cfg cfg0
+    (HTran : transition cfg cfg0),
+    trfun cfg = Some cfg0.
+  Proof.
+    intros; inversion_clear HTran;
+    repeat (simpl;
+      match goal with
+        | [DT : dec_term ?t = ?ir       |- context [dec_term ?t]] => rewrite DT
+        | [DC : dec_context ?f ?v = ?ir |- context [dec_context ?f ?v]] => rewrite DC
+        | [CTR : R.contract ?r = ?ot |- context [R.contract ?r]] => rewrite CTR
+      end); reflexivity.
+  Qed.
+
+  Lemma fun_transition : forall cfg,
+    match trfun cfg with
+      | Some cfg' => transition cfg cfg'
+      | None => forall cfg', ~transition cfg cfg'
+    end.
+  Proof.
+    destruct cfg; simpl.
+    (* Init *)
+    apply t_init.
+    (* Eval *)
+    remember (dec_term t) as dt; destruct dt; simpl; symmetry in Heqdt.
+    (* red *)
+    remember (R.contract r) as ct; destruct ct; simpl; symmetry in Heqct.
+    (* ok *)
+    eapply t_red; eassumption.
+    (* fail *)
+    intros ? HTran; inversion_clear HTran;
+      rewrite Heqdt in DT; inversion DT; subst; rewrite Heqct in CONTR;
+        inversion CONTR.
+    (* val *)
+    destruct c; simpl.
+    (* empty *)
+    apply t_cval; assumption.
+    (* frame *)
+    remember (dec_context e v) as dc; destruct dc; simpl; symmetry in Heqdc.
+    (* red *)
+    remember (R.contract r) as ct; destruct ct; simpl; symmetry in Heqct.
+    (* ok *)
+    eapply t_cred; eassumption.
+    (* fail *)
+    intros ? HTran; inversion_clear HTran; rewrite Heqdt in DT; inversion DT; subst;
+      rewrite Heqdc in DC; inversion DC; subst; rewrite Heqct in CONTR;
+        inversion CONTR.
+    (* val *)
+    contradiction (dec_context_not_val _ _ _ Heqdc).
+    (* term *)
+    eapply t_crec; eassumption.
+    (* term *)
+    eapply t_rec; assumption.
+    (* Final *)
+    intros ? HTran; inversion HTran.
+  Qed.
 
   Module AM : ABSTRACT_MACHINE
     with Definition term := R.term
