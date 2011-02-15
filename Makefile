@@ -1,7 +1,7 @@
 cur: env_cs env_cs_state
 all: sub sub_cs sub_tr env env_cs env_cs_state
 util:
-	cd utils && coqc Util
+	cd utils && make
 sub: util
 	cd substitutions && make
 sub_cs: util
